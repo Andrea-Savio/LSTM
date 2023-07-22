@@ -5,11 +5,14 @@ import numpy as np
 
 # This function parses the datasets and creates a tensor with the coordinates for each timestep for each person tracked in the dataset.
 
-def dataset_parser(file_name, pred_window):
+def dataset_parser(file_name, pred_window, train: bool):
 
 # Define file path and some useful variables for array dimension
 
-    data_path = 'train_dataset_with_activity/detections/detections_3d/'
+    if train:
+        data_path = 'train_dataset_with_activity/detections/detections_3d/'
+    else:
+        data_path = 'test_dataset/test_detections/detections/detections_3d/'
     file_path = data_path + file_name
 
     with open(file_path) as file:
@@ -46,17 +49,17 @@ def dataset_parser(file_name, pred_window):
        
     #print(max)    
         
-    #---------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     # Array initialization, if size is not ok adjust it
 
-    if (max % tentative_prediction_window != 0):
-        max = max - (max % tentative_prediction_window) + tentative_prediction_window
+    #if (max % tentative_prediction_window != 0):
+    #    max = max - (max % tentative_prediction_window) + tentative_prediction_window
 
-    coordinates = np.zeros((max, 3, counter), dtype=float)
+    coordinates = np.zeros((counter, max, 3), dtype=float)
     #coordinates2 = np.zeros((max, 3, counter), dtype=float)
 
-    #---------------------------------------------------------------------------------------------------------------------------------
+    #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     # Extract cx, cy, cz for each different detection and for each different id and add to array
     for id, detections in data['detections'].items():
@@ -68,22 +71,40 @@ def dataset_parser(file_name, pred_window):
             cy = detection['box']['cy']
             cz = detection['box']['cz']
             
-            coordinates[index_rows, 0, index_depth] = cx
-            coordinates[index_rows, 1, index_depth] = cy
-            coordinates[index_rows, 2, index_depth] = cz
+            coordinates[index_depth, index_rows, 0] = cx
+            coordinates[index_depth, index_rows, 1] = cy
+            coordinates[index_depth, index_rows, 2] = cz
             index_rows = index_rows + 1
         index_depth = index_depth + 1
         index_rows = 0
 
     #print(coordinates)
-    return coordinates        
+    return coordinates 
+
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Create subsequences of the desired time window (7.5 Hz)
+
+def create_subsequence(data, sequence_length):
+    num_samples, seq_length, input_dim = data.size()
+    num_subsequences = seq_length - sequence_length + 1
+    subsequences = []
+    for i in range(num_subsequences):
+        subsequence = data[:,i:i+sequence_length,:]
+        subsequences.append(subsequence)
+
+    return torch.stack(subsequences)               
     
 
 if __name__ == '__main__':
-    data = dataset_parser('bytes-cafe-2019-02-07_0.json',35)    
+    data = dataset_parser('bytes-cafe-2019-02-07_0.json',35, True)    
     window_size = 35
-    X_train = data[:(len(data)-window_size),:,:]
-    Y_train = data[window_size:,:,:]
+    X_train = data[:,:(len(data)-window_size),:]
+    Y_train = data[:,window_size:,:]
     X_train = torch.tensor(X_train, dtype=torch.float32)
     Y_train = torch.tensor(Y_train, dtype=torch.float32)
-    print(X_train.size())
+
+    X_train_sub = create_subsequence(X_train,window_size)
+    print(X_train_sub.shape)
+
+    #print(X_train.shape)

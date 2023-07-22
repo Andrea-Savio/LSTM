@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     window_size = 35
 
-    model = LSTModel(torch.Size([window_size, 3, 1]),window_size,2,False)
+    model = LSTModel(3,64,window_size,2,False)
 
     # Prepare parameters
 

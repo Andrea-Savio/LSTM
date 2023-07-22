@@ -4,7 +4,7 @@
 
 """
 #from curses import window
-import keras
+#import keras
 import os
 import json
 import sys
@@ -56,7 +56,7 @@ class LSTModel(object):
 
 	# Model definition
 
-	def __init__(self, hidden_dim: torch.Size , window_size: int, num_layers: int, use_checkpoint: bool):
+	def __init__(self, input_dim, hidden_dim,  window_size: int, num_layers: int, use_checkpoint: bool):
 		#self.in_hdf5_path = in_hdf5_path
 		#self.saved_models_base_path = saved_models_base_path
 		#self.hyperparameters = hyperparameters
@@ -68,7 +68,7 @@ class LSTModel(object):
 		super(LSTModel, self).__init__()
 		
 		self.hidden_dim = hidden_dim
-		input_dim = torch.Size([window_size, 3, 1])
+		#input_dim = torch.Size([window_size, 3, 1])
 		output_dim = input_dim
 
 		self.lstm0 = nn.LSTM(input_dim, hidden_dim, num_layers=num_layers)
@@ -86,7 +86,7 @@ class LSTModel(object):
 
 		x,(h1,c1) = self.lstm0(x, (h0,c0))
 		x,(h2,c2) = self.lstm1(x, (h1,c1))
-		x = self.linear(x)
+		#x = self.linear(x)
 		return x
 
 	#----------------------------------------------------------------------------------------------------------------------------------
@@ -151,8 +151,8 @@ class LSTModel(object):
 
 	# Save model
 
-	def save_model(model, path):
-		torch.save(model.state_dict(), path)
+	def save_model(self, path):
+		torch.save(self.state_dict(), path)
 
 	#------------------------------------------------------------------------------------------------------------------------------------
 
