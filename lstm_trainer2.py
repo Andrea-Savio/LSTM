@@ -86,7 +86,9 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             print("Data file: " + file)
-            data = dataset_parser(file, seq_length, True)    
+            data = dataset_parser(file, seq_length, True)
+
+            #data[data==0] = np.nan
 
             X_train = data[:,:(data.shape[1]-seq_length),:]
             Y_train = data[:,(seq_length):,:]

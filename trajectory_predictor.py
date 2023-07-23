@@ -4,12 +4,15 @@ import rospy
 from lstm_trainer2 import LSTM_Trainer
 import torch
 import torch.nn
-from spencer_people_tracking.messages.spencer_tracking_msgs.msg import TrackedPersons
-from spencer_people_tracking.messages.spencer_tracking_msgs.msg import TrackedPerson
+from spencer_tracking_msgs.msg import TrackedPersons
+from spencer_tracking_msgs.msg import TrackedPerson
 from trajectory_prediction.msg import PredictedTrajectories
+from trajectory_prediction.msg import PredictedTrajectory
 
 def tracker_callback(data):
-    rospy.loginfo("I heard: " + data)
+    rospy.loginfo("Returning tracked people data")
+    id = data.tracks[1].track_id
+    rospy.loginfo(id)
     return data
 
 def tracker_subscriber():
@@ -28,7 +31,7 @@ def trajectory_publisher(traj):
 
     rate = rospy.Rate(7.5)
     while not rospy.is_shutdown():
-        pub.publish(data)
+        pub.publish(traj)
         rate.sleep()
 
 if __name__ == "__main__":
