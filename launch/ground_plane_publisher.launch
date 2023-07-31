@@ -1,0 +1,9 @@
+<launch>
+    <!-- Start ROS master and other core nodes if needed -->
+    <!-- You can include other launch files here if necessary -->
+
+    <!-- Start your custom publisher node -->
+    <node name="ground_publisher_node" pkg="trajectory_prediction" type="ground_plane_publisher.py" output="screen">
+    </node>
+</launch>
+

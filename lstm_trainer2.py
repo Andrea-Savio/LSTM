@@ -20,19 +20,39 @@ class LSTM_Trainer(nn.Module):
         self.seq_length = seq_length
         self.output_size = input_size
 
-        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers)
+        self.lstm_xyz = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers)
+        #self.lstm_context = nn.LSTM(input_size=2, hidden_size = hidden_size, num_layers = num_layers)
+    
+        self.fc1 = nn.Linear(3,256)
+        self.fc2 = nn.Linear(256,3)
+
+        #self.lstm_xyz1 = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers)
+        #self.lstm_context1 = nn.LSTM(input_size=2, hidden_size = hidden_size, num_layers = num_layers)
 
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     # Define how data flows into the network
     
-    def forward(self, x):
-        h_0 = Variable(torch.zeros(self.num_layers, x.size(1), self.hidden_size, device=x.device)) #hidden state
-        c_0 = Variable(torch.zeros(self.num_layers, x.size(1), self.hidden_size, device=x.device)) #internal state
+    def forward(self, xyz): #, context)
+        h_0xyz = Variable(torch.zeros(self.num_layers, xyz.size(1), self.hidden_size, device=xyz.device)) #hidden state
+        c_0xyz = Variable(torch.zeros(self.num_layers, xyz.size(1), self.hidden_size, device=xyz.device)) #internal state
+
+        #h_0cont = Variable(torch.zeros(self.num_layers, context.size(1), self.hidden_size, device=context.device)) 
+        #c_0cont = Variable(torch.zeros(self.num_layers, context.size(1), self.hidden_size, device=context.device))
+        
         # Propagate input through LSTM
         
-        output, (hn, cn) = self.lstm(x, (h_0, c_0)) #lstm with input, hidden, and internal state
-        
+        out_xyz, (hn_xyz, cn_xyz) = self.lstm_xyz(xyz, (h_0xyz, c_0xyz)) #lstm with input, hidden, and internal state
+        #out_context, (hn_context, cn_context)  = self.lstm_context(context, (h_0cont, c_0cont))
+        #print(out_xyz)
+        #print(out_context)
+        #combined = torch.cat((out_xyz, out_context),dim=2)
+        #print(combined)
+        out = self.fc1(out_xyz)
+        output_xyz = self.fc2(out)
+
+        #output_xyz = self.lstm_xyz1(out[:,0:3])
+        #output_cont = self.lstm_context1(out[:,3:])
         #out = self.relu(hn)
         
         #hn = hn.view(-1, self.hidden_size) #reshaping the data for Dense layer next
@@ -41,7 +61,7 @@ class LSTM_Trainer(nn.Module):
         #out = self.relu(out) #relu
         #out = self.fc(out) #Final Output
         
-        return output
+        return output_xyz #, output_cont
 
     #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -68,7 +88,7 @@ if __name__ == "__main__":
     test_files = ['serra-street-2019-01-30_0.json', 'nvidia-aud-2019-01-25_0.json', 'discovery-walk-2019-02-28_0.json', 'gates-foyer-2019-01-17_0.json', 'tressider-2019-03-16_2.json', 'discovery-walk-2019-02-28_1.json', 'meyer-green-2019-03-16_1.json', 'tressider-2019-04-26_0.json', 'gates-to-clark-2019-02-28_0.json', 'gates-ai-lab-2019-04-17_0.json', 'tressider-2019-04-26_1.json', 'stlc-111-2019-04-19_1.json', 'lomita-serra-intersection-2019-01-30_0.json', 'hewlett-class-2019-01-23_1.json', 'cubberly-auditorium-2019-04-22_1.json', 'tressider-2019-04-26_3.json', 'nvidia-aud-2019-04-18_1.json', 'huang-intersection-2019-01-22_0.json', 'food-trucks-2019-02-12_0.json', 'outdoor-coupa-cafe-2019-02-06_0.json', 'quarry-road-2019-02-28_0.json', 'nvidia-aud-2019-04-18_2.json', 'hewlett-class-2019-01-23_0.json', 'indoor-coupa-cafe-2019-02-06_0.json', 'huang-2-2019-01-25_1.json', 'stlc-111-2019-04-19_2.json', 'gates-basement-elevators-2019-01-17_0.json']
 
     input_dim = 3
-    num_layers = 3
+    num_layers = 10
     seq_length = 35
     hidden_size = 3
 
@@ -88,12 +108,14 @@ if __name__ == "__main__":
             print("Data file: " + file)
             data = dataset_parser(file, seq_length, True)
 
-            #data[data==0] = np.nan
-
             X_train = data[:,:(data.shape[1]-seq_length),:]
+            #print(X_train)
             Y_train = data[:,(seq_length):,:]
+    
             X_train = torch.tensor(X_train, dtype=torch.float32)
+            #X_train = X_train.unsqueeze(dim=0)
             Y_train = torch.tensor(Y_train, dtype=torch.float32)
+            #Y_train = Y_train.unsqueeze(dim=0)
             
             #X_train = X_train.to(device)
             #Y_train = Y_train.to(device)
@@ -111,17 +133,27 @@ if __name__ == "__main__":
             
             model.zero_grad()
 
-            subseq = X_train[:,i:i+seq_length,:]
-            subseq = subseq.to(device)
-            targets = Y_train[:,i:i+seq_length,:]
-            targets = targets.to(device)
+            subseq_xyz = X_train[:,i:i+seq_length,0:3]
+            subseq_xyz = subseq_xyz.to(device)
+            targets_xyz = Y_train[:,i:i+seq_length,0:3]
+            targets_xyz = targets_xyz.to(device)
+
+            """
+            subseq_cont = X_train[:,i:i+seq_length,3:]
+            subseq_cont = subseq_cont.to(device)
+            targets_cont = Y_train[:,i:i+seq_length,3:]
+            targets_cont = targets_cont.to(device)
+            #print(subseq_cont)
+            """
 
             model.train()
 
-            preds = model(subseq)
-            preds = preds.to(device)
+            preds_xyz = model(subseq_xyz) # subseq_cont)
+            print(preds_xyz)
+            preds_xyz = preds_xyz.to(device)
+            #pred_conts = preds_cont.to_device()
 
-            loss = loss_function(preds,targets)
+            loss = loss_function(preds_xyz,targets_xyz) #+ loss_function(preds_cont, targets_cont)
             print("Loss at step " + str(i + 1) + " = " + str(loss))
             loss.backward()
             optimizer.step()
@@ -130,6 +162,7 @@ if __name__ == "__main__":
 
     # Testing loop
 
+    # Load model if needed
     #model.load_model('models/simple_model_0.pth')
 
     print("Begin testing phase.")
@@ -138,8 +171,8 @@ if __name__ == "__main__":
         print("Data file: " + file)
         data = dataset_parser(file, seq_length, False)
 
-        X_test = data[:,:(data.shape[1]-seq_length),:]
-        Y_test = data[:,(seq_length):,:]
+        X_test = data[:,:(data.shape[1]-seq_length),0:3]
+        Y_test = data[:,(seq_length):,0:3]
         X_test = torch.tensor(X_test, dtype=torch.float32)
         Y_test = torch.tensor(Y_test, dtype=torch.float32)
         #X_test.to(device)
@@ -155,14 +188,14 @@ if __name__ == "__main__":
 
             model.eval()
 
-            subseq = X_test[:,j:j+seq_length,:]
-            subseq = subseq.to(device)
-            targets = Y_test[:,j:j+seq_length,:]
-            targets = targets.to(device)
+            subseq_xyz = X_test[:,j:j+seq_length,:]
+            subseq_xyz = subseq_xyz.to(device)
+            targets_xyz = Y_test[:,j:j+seq_length,:]
+            targets_xyz = targets_xyz.to(device)
             with torch.no_grad():
-                preds = model(subseq)
-                preds = preds.to(device)
-                loss = loss_function(preds,targets)
+                preds_xyz = model(subseq_xyz)
+                preds_xyz = preds_xyz.to(device)
+                loss = loss_function(preds_xyz,targets_xyz)
 
             print(loss)
 
@@ -170,4 +203,5 @@ if __name__ == "__main__":
 
     # Save model if needed
 
-    model.save_model("models/simple_model_0.pth") 
+    model.save_model("models/model_traj_0.pth")
+    print("Model saved") 
