@@ -128,7 +128,7 @@ if __name__ == "__main__":
             num_samples, total, input_dim = X_train.size()
             num_subsequences = total - seq_length + 1
         
-        for i in range(0, num_subsequences, 5):
+        for i in range(num_subsequences):
             print("Subsequence " + str(i+1) + " out of " + str(num_subsequences))
             
             model.zero_grad()
@@ -203,5 +203,5 @@ if __name__ == "__main__":
 
     # Save model if needed
 
-    model.save_model("models/model_0_step_5.pth")
+    model.save_model("models/model_1_step_1.pth")
     print("Model saved") 

@@ -14,9 +14,9 @@ def ground_plane_publisher():
     B = 0.0
     C = 1.0
     D = 0.0
-    frame_id = "xtion_link"
+    frame_id = "xtion_rgb_optical_frame"
 
-    rate = rospy.Rate(10)  # 10 Hz
+    rate = rospy.Rate(30)  # 10 Hz
 
     while not rospy.is_shutdown():
         ground_plane_msg = GroundPlane()

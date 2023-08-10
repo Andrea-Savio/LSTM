@@ -48,14 +48,14 @@ def dataset_parser(file_name, pred_window, train: bool):
             max = maxt
         maxt = 0    
        
-    #print(max)    
+    print(max)    
         
     #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     # Array initialization, if size is not ok adjust it
 
-    #if (max % tentative_prediction_window != 0):
-    #    max = max - (max % tentative_prediction_window) + tentative_prediction_window
+    if (max % tentative_prediction_window != 0):
+        max = max - (max % tentative_prediction_window) + tentative_prediction_window
 
     coordinates = np.zeros((counter, max, 5), dtype=float)
     #coordinates2 = np.zeros((max, 3, counter), dtype=float)
@@ -72,7 +72,7 @@ def dataset_parser(file_name, pred_window, train: bool):
             cy = detection['box']['cy']
             cz = detection['box']['cz']
             rot = detection['box']['rot_z']
-            
+                
             coordinates[index_depth, index_rows, 0] = cx
             coordinates[index_depth, index_rows, 1] = cy
             coordinates[index_depth, index_rows, 2] = cz

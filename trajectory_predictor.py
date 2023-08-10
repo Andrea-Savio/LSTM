@@ -20,7 +20,8 @@ from trajectory_prediction.msg import PredictedTrajectory
 class Tracked():
   def __init__(self, id, seq):
     self.id = id
-    self.path = [[0]*3 for i in range(seq)]
+    #self.path = [[0]*3 for i in range(seq)]
+    self.path = []
     self.context = []
     self.counter = 0
     self.seq = seq
@@ -38,10 +39,12 @@ class Tracked():
       return False
 
   def add_detection(self, x, y, z):
-    if self.counter < (self.seq - 1):
-      self.path[self.counter][0] = x
-      self.path[self.counter][1] = y
-      self.path[self.counter][2] = z
+    if len(self.path) < self.seq:
+      column = [0,0,0]
+      column[0] = x
+      column[1] = y
+      column[2] = z
+      self.path.append(column)
       self.counter = self.counter + 1
     else:
       self.path.pop(0)
@@ -98,7 +101,7 @@ def tracker_callback(msg, args):
       #rospy.loginfo(person)
       #rospy.loginfo("------------------------------------------------------------------------------------------------------------------")
       for person in msg_list:
-        rospy.loginfo(person.counter)
+        rospy.loginfo(len(person.path))
 
         if detection.track_id == person.id:
           rospy.loginfo("ID matched")
@@ -107,21 +110,23 @@ def tracker_callback(msg, args):
           #print(detection.path)
           rospy.loginfo("Check")
 
-          if person.counter == (seq_length - 1):
+          if len(person.path) == seq_length:
             rospy.loginfo("Time to predict!")
             start = time.time()
 
             #person.path = np.array(person.path)
             #person.path.reshape(1, seq_length, 3)
+            #rospy.loginfo(person.path)
 
             coord = torch.tensor(person.path, dtype=torch.float32)
+            #rospy.loginfo(coord)
             coord = coord.view(1, seq_length, 3)
             coord = coord.to(device)
             #rospy.loginfo(coord)
             rospy.loginfo("Data ready")
             output = model(coord)
             #del(coord)
-            #rospy.loginfo(output)
+            rospy.loginfo(output)
             rospy.loginfo("Output ready")
             prediction = PredictedTrajectory()
 
@@ -150,7 +155,7 @@ def tracker_callback(msg, args):
             person.path.pop(0)
             person.counter = person.counter - 1
 
-            #rospy.loginfo(person.path)
+            rospy.loginfo(person.counter)
 
       if not exists:
           rospy.loginfo("New ID")
@@ -177,7 +182,7 @@ if __name__ == "__main__":
   exists = False
 
   model = LSTM_Trainer(input_dim, num_layers, seq_length, hidden_size)
-  model.load_model("models/model_traj_0.pth")
+  model.load_model("models/simple_model_0.pth")
   model.to(device)
 
   model.eval()
