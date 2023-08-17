@@ -11,8 +11,6 @@ from spencer_tracking_msgs.msg import TrackedPersons
 from spencer_tracking_msgs.msg import TrackedPerson
 from trajectory_prediction.msg import PredictedTrajectories
 from trajectory_prediction.msg import PredictedTrajectory
-from pickle import load
-from sklearn.preprocessing import MinMaxScaler
 
 
 #msg = None
@@ -40,18 +38,19 @@ class Tracked():
     else:
       return False
 
-  def add_detection(self, x, y, z):
+  def add_detection(self, x, y, z, vx, vy, vz):
     if len(self.path) < self.seq:
       column = [0,0,0]
       column[0] = x
       column[1] = y
       column[2] = z
+      #column[3] = np.sqrt(vx**2 + vy**2 + vz**2)
       self.path.append(column)
       self.counter = self.counter + 1
     else:
       self.path.pop(0)
       self.counter = self.counter - 1
-      self.add_detection(x, y, z)  
+      self.add_detection(x, y, z, vx, vy, vz)  
 
 #------------------------------------------------------------------------------------------------------------------------------------
 
@@ -91,7 +90,7 @@ def trajectory_publisher(traj):
 def tracker_callback(msg, args):
     rospy.loginfo("Returning tracked people data")
 
-    msg_list, model, pub, device, seq_length, scaler = args
+    msg_list, model, pub, device, seq_length = args
     
     #rospy.loginfo(msg)
     #rospy.loginfo("------------------------------------------------------------------------------------------------------------------")
@@ -108,7 +107,7 @@ def tracker_callback(msg, args):
         if detection.track_id == person.id:
           rospy.loginfo("ID matched")
           exists = True
-          person.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.position.z)
+          person.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.position.z, detection.twist.twist.linear.x, detection.twist.twist.linear.y, detection.twist.twist.linear.z)
           #print(detection.path)
           rospy.loginfo("Check")
 
@@ -116,37 +115,38 @@ def tracker_callback(msg, args):
             rospy.loginfo("Time to predict!")
             start = time.time()
 
-            person.path = np.array(person.path)
-            #person.path.reshape(1, seq_length, 3)
-            #rospy.loginfo(person.path)
-
-            coord = scaler.transform(person.path.reshape(-1,1)).reshape(person.path.shape)
-            coord = torch.tensor(person.path, dtype=torch.float32)
-            #rospy.loginfo(coord)
-            coord = coord.view(1, seq_length, 3)
-            coord = coord.to(device)
-            rospy.loginfo(coord)
-            rospy.loginfo("Data ready")
-            
-            output = model(coord)
-            output = output.cpu().detach().numpy()
-            output = scaler.inverse_transform(output.reshape(-1,1)).reshape(output.shape)
-            #del(coord)
-            rospy.loginfo(output)
-            rospy.loginfo("Output ready")
             prediction = PredictedTrajectory()
 
             prediction.track_id = person.id
             prediction.trajectory = [Pose() for k in range(seq_length)]
-            for i in range(seq_length):
-              prediction.trajectory[i].position.x = output[0,i,0]
-              prediction.trajectory[i].position.y = output[0,i,1]
-              prediction.trajectory[i].position.z = output[0,i,2]
 
-              prediction.trajectory[i].orientation.x = 0
-              prediction.trajectory[i].orientation.y = 0
-              prediction.trajectory[i].orientation.z = 0
-              prediction.trajectory[i].orientation.w = 0
+            #person.path = np.array(person.path)
+            #person.path.reshape(1, seq_length, 3)
+            rospy.loginfo(person.path)
+            #coord = torch.tensor(person.path[seq_length-1], dtype=torch.float32)
+            for s in range(seq_length):
+              coord = torch.tensor(person.path[s], dtype=torch.float32)
+            #rospy.loginfo(coord)
+              coord = coord.view(1, 1, 3)
+              coord = coord.to(device)
+              rospy.loginfo(coord)
+              rospy.loginfo("Data ready")
+              output = model(coord)
+
+              #coord = output
+              #del(coord)
+              rospy.loginfo(output)
+              rospy.loginfo("Output ready")
+
+              prediction.trajectory[s].position.x = output[0,0,0]
+              prediction.trajectory[s].position.y = output[0,0,1]
+              prediction.trajectory[s].position.z = output[0,0,2]
+
+              prediction.trajectory[s].orientation.x = 0
+              prediction.trajectory[s].orientation.y = 0
+              prediction.trajectory[s].orientation.z = 0
+              prediction.trajectory[s].orientation.w = 0
+            
             rospy.loginfo("Prediction ready")
             pub.publish(prediction)
             rospy.loginfo("Prediction published")
@@ -166,7 +166,7 @@ def tracker_callback(msg, args):
       if not exists:
           rospy.loginfo("New ID")
           temp = Tracked(detection.track_id, seq_length)
-          temp.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.position.z)
+          temp.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.position.z, detection.twist.twist.linear.x, detection.twist.twist.linear.y, detection.twist.twist.linear.z)
           temp.counter = temp.counter + 1
           msg_list.append(temp)
 
@@ -181,20 +181,19 @@ if __name__ == "__main__":
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
   input_dim = 3
-  num_layers = 3
+  num_layers = 1
   seq_length = 35
-  hidden_size = 3
+  hidden_size = 256
   msg_list = []
   exists = False
-  scaler = load(open('scaler.pkl', 'rb'))
 
   model = LSTM_Trainer(input_dim, num_layers, seq_length, hidden_size)
-  model.load_model("models/model_scaled_3linear_128hidden_single_epoch.pth")
+  model.load_model("models/model_1step_1fc.pth")
   model.to(device)
 
   model.eval()
 
-  sub = rospy.Subscriber("/spencer/perception/tracked_persons", TrackedPersons, tracker_callback, (msg_list, model, pub, device, seq_length, scaler))
+  sub = rospy.Subscriber("/spencer/perception/tracked_persons", TrackedPersons, tracker_callback, (msg_list, model, pub, device, seq_length))
 
   rospy.spin()
 

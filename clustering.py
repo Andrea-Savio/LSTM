@@ -2,8 +2,7 @@
 
 import rospy
 from sklearn.cluster import DBSCAN
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score, \
-                            adjusted_rand_score, normalized_mutual_info_score, homogeneity_completeness_v_measure
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score                         
 from sklearn.metrics import pairwise_distances
 from scipy.spatial.distance import euclidean
 from geometry_msgs.msg import Point
@@ -52,7 +51,7 @@ def position_callback(data):
         y = item.pose.pose.position.y
         position_data.append([x, y])
     
-    rospy.loginfo(position_data)
+    #rospy.loginfo(position_data)
     perform_clustering()    
 
 # Function to perform clustering using DBSCAN and calculate silhouette score
