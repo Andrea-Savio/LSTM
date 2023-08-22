@@ -124,23 +124,23 @@ def tracker_callback(msg, args):
             #person.path.reshape(1, seq_length, 3)
             rospy.loginfo(person.path)
             #coord = torch.tensor(person.path[seq_length-1], dtype=torch.float32)
-            for s in range(seq_length):
-              coord = torch.tensor(person.path[s], dtype=torch.float32)
+            for s in range(int(seq_length/7)):
+              coord = torch.tensor(person.path[s:s+7], dtype=torch.float32)
             #rospy.loginfo(coord)
-              coord = coord.view(1, 1, 3)
+              coord = coord.view(1, 7, 3)
               coord = coord.to(device)
               rospy.loginfo(coord)
               rospy.loginfo("Data ready")
-              output = model(coord)
+              output = model(coord)[:,-1,:]
 
               #coord = output
               #del(coord)
               rospy.loginfo(output)
               rospy.loginfo("Output ready")
 
-              prediction.trajectory[s].position.x = output[0,0,0]
-              prediction.trajectory[s].position.y = output[0,0,1]
-              prediction.trajectory[s].position.z = output[0,0,2]
+              prediction.trajectory[s].position.x = output[0,0]
+              prediction.trajectory[s].position.y = output[0,1]
+              prediction.trajectory[s].position.z = output[0,2]
 
               prediction.trajectory[s].orientation.x = 0
               prediction.trajectory[s].orientation.y = 0
@@ -181,17 +181,18 @@ if __name__ == "__main__":
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
   input_dim = 3
-  num_layers = 1
+  num_layers = 7
   seq_length = 35
-  hidden_size = 256
+  hidden_size = 128
   msg_list = []
   exists = False
 
   model = LSTM_Trainer(input_dim, num_layers, seq_length, hidden_size)
-  model.load_model("models/model_1step_1fc.pth")
+  model.load_state_dict(torch.load("models/model7_batch_32_final.pt"))
+  model.eval()
   model.to(device)
 
-  model.eval()
+
 
   sub = rospy.Subscriber("/spencer/perception/tracked_persons", TrackedPersons, tracker_callback, (msg_list, model, pub, device, seq_length))
 

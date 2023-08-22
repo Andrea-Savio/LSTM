@@ -12,6 +12,12 @@ from spencer_tracking_msgs.msg import TrackedPerson
 from trajectory_prediction.msg import PredictedTrajectories
 from trajectory_prediction.msg import PredictedTrajectory
 from pickle import load
+
+from sklearn.cluster import DBSCAN
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score                         
+from sklearn.metrics import pairwise_distances
+from clustering import dunn_index
+
 from sklearn.preprocessing import MinMaxScaler
 
 
@@ -22,6 +28,7 @@ from sklearn.preprocessing import MinMaxScaler
 class Tracked():
   def __init__(self, id, seq):
     self.id = id
+    cluster = None
     #self.path = [[0]*3 for i in range(seq)]
     self.path = []
     self.context = []
@@ -91,7 +98,7 @@ def trajectory_publisher(traj):
 def tracker_callback(msg, args):
     rospy.loginfo("Returning tracked people data")
 
-    msg_list, model, pub, device, seq_length, scaler = args
+    msg_list, model, pub, device, seq_length, scaler, points, dbscan = args
     
     #rospy.loginfo(msg)
     #rospy.loginfo("------------------------------------------------------------------------------------------------------------------")
@@ -105,6 +112,23 @@ def tracker_callback(msg, args):
       for person in msg_list:
         rospy.loginfo(len(person.path))
 
+        #points.append([person.path[0,0], person.path[0,1]])
+
+        #--------------------------------------------------------------------------------------------------------------------------
+        """
+        if len(points) > 1:
+          labels = dbscan.fit_predict(points)
+          for h in range(len(points)):
+            if points[h][3] == person.id:
+              person.cluster = labels[h]
+          silhouette = silhouette_score(points, labels)
+          davies_bouldin = davies_bouldin_score(points, labels)
+          calinski_harabasz = calinski_harabasz_score(points, labels)
+          dunn = dunn_index(points, labels)
+        """
+
+        #--------------------------------------------------------------------------------------------------------------------------
+
         if detection.track_id == person.id:
           rospy.loginfo("ID matched")
           exists = True
@@ -116,12 +140,12 @@ def tracker_callback(msg, args):
             rospy.loginfo("Time to predict!")
             start = time.time()
 
-            person.path = np.array(person.path)
+            path = np.array(person.path)
             #person.path.reshape(1, seq_length, 3)
             #rospy.loginfo(person.path)
 
-            coord = scaler.transform(person.path.reshape(-1,1)).reshape(person.path.shape)
-            coord = torch.tensor(person.path, dtype=torch.float32)
+            coord = scaler.transform(path.reshape(-1,1)).reshape(path.shape)
+            coord = torch.tensor(path, dtype=torch.float32)
             #rospy.loginfo(coord)
             coord = coord.view(1, seq_length, 3)
             coord = coord.to(device)
@@ -132,6 +156,7 @@ def tracker_callback(msg, args):
             output = output.cpu().detach().numpy()
             output = scaler.inverse_transform(output.reshape(-1,1)).reshape(output.shape)
             #del(coord)
+
             rospy.loginfo(output)
             rospy.loginfo("Output ready")
             prediction = PredictedTrajectory()
@@ -168,6 +193,7 @@ def tracker_callback(msg, args):
           temp = Tracked(detection.track_id, seq_length)
           temp.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.position.z)
           temp.counter = temp.counter + 1
+          points.append([temp.path[0][0], temp.path[0][1], temp.id])
           msg_list.append(temp)
 
 # Main
@@ -181,20 +207,25 @@ if __name__ == "__main__":
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
   input_dim = 3
-  num_layers = 3
+  num_layers = 7
   seq_length = 35
-  hidden_size = 3
+  hidden_size = 128
   msg_list = []
+  points = []
   exists = False
+  eps = 0.5
+  min_samples = 2
+  
   scaler = load(open('scaler.pkl', 'rb'))
+  dbscan = DBSCAN(eps=eps, min_samples=min_samples)
 
-  model = LSTM_Trainer(input_dim, num_layers, seq_length, hidden_size)
-  model.load_model("models/model_scaled_3linear_128hidden_single_epoch.pth")
+  model = LSTM_Trainer(input_dim, hidden_size, num_layers, 7)
+  model.load_state_dict(torch.load("models/model7_batch_32_final.pt"))
   model.to(device)
 
   model.eval()
 
-  sub = rospy.Subscriber("/spencer/perception/tracked_persons", TrackedPersons, tracker_callback, (msg_list, model, pub, device, seq_length, scaler))
+  sub = rospy.Subscriber("/spencer/perception/tracked_persons", TrackedPersons, tracker_callback, (msg_list, model, pub, device, seq_length, scaler, points, dbscan))
 
   rospy.spin()
 
