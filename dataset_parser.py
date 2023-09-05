@@ -5,10 +5,11 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import math
 import numpy as np
-
+from pickle import dump
 from sklearn.cluster import DBSCAN
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score                         
 from sklearn.metrics import pairwise_distances
+from sklearn.preprocessing import StandardScaler
 from clustering import dunn_index
 
 class CustomDataset(Dataset):
@@ -81,7 +82,7 @@ def dataset_parser(file_name, pred_window, train: bool):
             max = maxt
         maxt = 0    
        
-    print(max)    
+    #print(max)    
         
     #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -90,8 +91,10 @@ def dataset_parser(file_name, pred_window, train: bool):
     if (max % tentative_prediction_window != 0):
         max = max - (max % tentative_prediction_window) + tentative_prediction_window
 
+    print(max) 
+
     coordinates = np.zeros((counter, max, 11), dtype=float)
-    #coordinates2 = np.zeros((max, 3, counter), dtype=float)
+    #coordinates = np.zeros((counter, 210, 3), dtype=float)
 
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -119,6 +122,7 @@ def dataset_parser(file_name, pred_window, train: bool):
 
         index_depth = index_depth + 1
         index_rows = 0
+    
     
     # Compute variation in position with respect to previous detection
 
@@ -174,6 +178,7 @@ def dataset_parser(file_name, pred_window, train: bool):
     
 
     #print(coordinates
+    
     return coordinates, single_lengths 
     """
     """
@@ -193,8 +198,30 @@ def create_subsequence(data, sequence_length):
     
 
 if __name__ == '__main__':
-    data, l = dataset_parser('bytes-cafe-2019-02-07_0.json',35, True)    
-    window_size = 35
+
+    total =  torch.tensor([], dtype=torch.float32)
+    train_files = ['packard-poster-session-2019-03-20_1.json', 'serra-street-2019-01-30_0.json', 'bytes-cafe-2019-02-07_0.json', 'nvidia-aud-2019-01-25_0.json', 'discovery-walk-2019-02-28_0.json', 'memorial-court-2019-03-16_0.json', 'gates-foyer-2019-01-17_0.json', 'tressider-2019-03-16_2.json', 'huang-basement-2019-01-25_0.json', 'gates-basement-elevators-2019-01-17_1.json', 'discovery-walk-2019-02-28_1.json', 'tressider-2019-04-26_2.json', 'svl-meeting-gates-2-2019-04-08_0.json', 'meyer-green-2019-03-16_1.json', 'gates-to-clark-2019-02-28_1.json', 'svl-meeting-gates-2-2019-04-08_1.json', 'gates-ai-lab-2019-02-08_0.json', 'tressider-2019-03-16_0.json', 'stlc-111-2019-04-19_0.json', 'tressider-2019-04-26_0.json', 'gates-to-clark-2019-02-28_0.json', 'gates-ai-lab-2019-04-17_0.json', 'huang-2-2019-01-25_0.json', 'tressider-2019-04-26_1.json', 'stlc-111-2019-04-19_1.json', 'lomita-serra-intersection-2019-01-30_0.json', 'hewlett-class-2019-01-23_1.json', 'cubberly-auditorium-2019-04-22_1.json', 'hewlett-packard-intersection-2019-01-24_0.json', 'tressider-2019-03-16_1.json', 'clark-center-2019-02-28_1.json', 'huang-lane-2019-02-12_0.json', 'tressider-2019-04-26_3.json', 'nvidia-aud-2019-04-18_1.json', 'huang-intersection-2019-01-22_0.json', 'packard-poster-session-2019-03-20_2.json', 'food-trucks-2019-02-12_0.json', 'packard-poster-session-2019-03-20_0.json', 'outdoor-coupa-cafe-2019-02-06_0.json', 'forbes-cafe-2019-01-22_0.json', 'nvidia-aud-2019-04-18_0.json', 'meyer-green-2019-03-16_0.json', 'quarry-road-2019-02-28_0.json', 'cubberly-auditorium-2019-04-22_0.json', 'nvidia-aud-2019-04-18_2.json', 'hewlett-class-2019-01-23_0.json', 'jordan-hall-2019-04-22_0.json', 'indoor-coupa-cafe-2019-02-06_0.json', 'clark-center-intersection-2019-02-28_0.json', 'huang-2-2019-01-25_1.json', 'stlc-111-2019-04-19_2.json', 'gates-159-group-meeting-2019-04-03_0.json', 'gates-basement-elevators-2019-01-17_0.json', 'clark-center-2019-02-28_0.json']
+    for file in train_files:
+        data, l = dataset_parser(file,35,True)
+        data = torch.tensor(data,dtype=torch.float32)    
+        total = torch.cat([total, data], dim=0)
+
+    num_samples = total.shape[0]
+    num_features = torch.prod(torch.tensor(total.shape[1:])).item()
+    reshaped_tensor = total.view(-1, 1)
+
+    # Convert the PyTorch tensor to a NumPy array
+    numpy_array = reshaped_tensor.numpy()
+
+    # Apply StandardScaler
+    scaler = StandardScaler()
+    scaled_numpy_array = scaler.fit_transform(numpy_array)
+
+    dump(scaler, open('scaler_full.pkl', 'wb'))
+    print("Scaler saved")
+
+
+    """    
     #print(data[0,0,0,0,0,0,:])
     X_train = data[:,:(len(data)-window_size),:]
     Y_train = data[:,window_size:,:]
@@ -205,3 +232,4 @@ if __name__ == '__main__':
     #print(X_train_sub.shape)
 
     print(X_train)
+    """

@@ -66,7 +66,7 @@ def perform_clustering():
     position_array = np.array(position_data)
 
     # Perform DBSCAN clustering
-    dbscan = DBSCAN(eps=2, min_samples=5)
+    dbscan = DBSCAN(eps=1, min_samples=2)
     labels = dbscan.fit_predict(position_array)
 
     # Calculate various clustering evaluation metrics

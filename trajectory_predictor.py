@@ -18,7 +18,7 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_har
 from sklearn.metrics import pairwise_distances
 from clustering import dunn_index
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 #msg = None
@@ -207,7 +207,7 @@ if __name__ == "__main__":
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
   input_dim = 3
-  num_layers = 7
+  num_layers = 2
   seq_length = 35
   hidden_size = 128
   msg_list = []
@@ -216,11 +216,11 @@ if __name__ == "__main__":
   eps = 0.5
   min_samples = 2
   
-  scaler = load(open('scaler.pkl', 'rb'))
+  scaler = load(open('scaler_full.pkl', 'rb'))
   dbscan = DBSCAN(eps=eps, min_samples=min_samples)
 
-  model = LSTM_Trainer(input_dim, hidden_size, num_layers, 7)
-  model.load_state_dict(torch.load("models/model7_batch_32_final.pt"))
+  model = LSTM_Trainer(input_dim, hidden_size, num_layers, 35)
+  model.load_state_dict(torch.load("models/model_scaled/model2_L1_20_epochs.pt"))
   model.to(device)
 
   model.eval()
