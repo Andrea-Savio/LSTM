@@ -209,7 +209,7 @@ if __name__ == '__main__':
     num_samples = total.shape[0]
     num_features = torch.prod(torch.tensor(total.shape[1:])).item()
     reshaped_tensor = total.view(-1, 1)
-
+    print(reshaped_tensor.shape)
     # Convert the PyTorch tensor to a NumPy array
     numpy_array = reshaped_tensor.numpy()
 
@@ -217,8 +217,8 @@ if __name__ == '__main__':
     scaler = StandardScaler()
     scaled_numpy_array = scaler.fit_transform(numpy_array)
 
-    dump(scaler, open('scaler_full.pkl', 'wb'))
-    print("Scaler saved")
+    #dump(scaler, open('scaler_full.pkl', 'wb'))
+    #print("Scaler saved")
 
 
     """    

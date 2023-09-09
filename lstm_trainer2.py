@@ -14,9 +14,9 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 #from matplotlib import pyplot as plt
 
-from dataset_parser import dataset_parser
-from dataset_parser import CustomDataset
-from dataset_parser import create_subsequence
+from dataset_parser_multi_file import dataset_parser
+from dataset_parser_multi_file import CustomDataset
+from dataset_parser_multi_file import create_subsequence
 
 class LSTM_Trainer(nn.Module):
 
@@ -30,15 +30,18 @@ class LSTM_Trainer(nn.Module):
         self.seq_length = seq_length
         self.output_size = input_size
 
-        self.lstm_xyz = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, dropout=0.5)
-        self.linear_context = nn.Linear(256,128)
+        self.lstm_xyz = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, dropout=0.2)
+        #self.bn = nn.BatchNorm1d(hidden_size)
+        #self.linear_context = nn.Linear(256,128)
     
         self.fc1 = nn.Linear(self.hidden_size, 128)
+        self.relu1 = nn.LeakyReLU(0.2)
         self.fc2 = nn.Linear(128, 64)
-        #self.fc3 = nn.Linear(64,3)
-        self.dropout = nn.Dropout(p=0.5)
-        self.fc3 = nn.Linear(64,3)
-        self.fc4 = nn.Linear(64,1)
+        self.relu2 = nn.LeakyReLU(0.2)
+        self.fc3 = nn.Linear(64,2)
+        #self.dropout = nn.Dropout(p=0.2)
+        #self.fc3 = nn.Linear(128,64)
+        #self.fc4 = nn.Linear(64,3)
 
         #self.lstm_xyz1 = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers)
         #self.lstm_context1 = nn.LSTM(input_size=2, hidden_size = hidden_size, num_layers = num_layers)
@@ -59,15 +62,22 @@ class LSTM_Trainer(nn.Module):
         out_xyz, (hn_xyz, cn_xyz) = self.lstm_xyz(xyz, (h_0xyz, c_0xyz)) #lstm with input, hidden, and internal state
         #out_xyz, _ = rnn_utils.pad_packed_sequence(packed_out_xyz, batch_first=True)
 
+        #out_xyz = out_xyz.transpose(1, 2)  # Transpose to [batch_size, hidden_size, sequence_length] for BatchNorm
+        #out_xyz = self.bn(out_xyz)
+        #out_xyz = out_xyz.transpose(1, 2)
+
         #out_context = self.linear_context(context)
         #print(out_xyz)
         #print(out_context)
         #combined = torch.cat((out_xyz, out_context),dim=2)
         #print(combined)
         
-        out = self.fc1(out_xyz)
+        out_xyz = self.fc1(out_xyz)
+        out = self.relu1(out_xyz)
         out = self.fc2(out)
+        out = self.relu2(out)
         output_xyz = self.fc3(out)
+        #output_xyz = self.fc4(out)
         #output_xyz = self.linear(out_xyz)
 
         #output_xyz = self.lstm_xyz1(out[:,0:3])
@@ -120,22 +130,22 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
-    train_files = ['packard-poster-session-2019-03-20_1.json', 'serra-street-2019-01-30_0.json', 'bytes-cafe-2019-02-07_0.json', 'nvidia-aud-2019-01-25_0.json', 'discovery-walk-2019-02-28_0.json', 'memorial-court-2019-03-16_0.json', 'gates-foyer-2019-01-17_0.json', 'tressider-2019-03-16_2.json', 'huang-basement-2019-01-25_0.json', 'gates-basement-elevators-2019-01-17_1.json', 'discovery-walk-2019-02-28_1.json', 'tressider-2019-04-26_2.json', 'svl-meeting-gates-2-2019-04-08_0.json', 'meyer-green-2019-03-16_1.json', 'gates-to-clark-2019-02-28_1.json', 'svl-meeting-gates-2-2019-04-08_1.json', 'gates-ai-lab-2019-02-08_0.json', 'tressider-2019-03-16_0.json', 'stlc-111-2019-04-19_0.json', 'tressider-2019-04-26_0.json', 'gates-to-clark-2019-02-28_0.json', 'gates-ai-lab-2019-04-17_0.json', 'huang-2-2019-01-25_0.json', 'tressider-2019-04-26_1.json', 'stlc-111-2019-04-19_1.json', 'lomita-serra-intersection-2019-01-30_0.json', 'hewlett-class-2019-01-23_1.json', 'cubberly-auditorium-2019-04-22_1.json', 'hewlett-packard-intersection-2019-01-24_0.json', 'tressider-2019-03-16_1.json', 'clark-center-2019-02-28_1.json', 'huang-lane-2019-02-12_0.json', 'tressider-2019-04-26_3.json', 'nvidia-aud-2019-04-18_1.json', 'huang-intersection-2019-01-22_0.json', 'packard-poster-session-2019-03-20_2.json', 'food-trucks-2019-02-12_0.json', 'packard-poster-session-2019-03-20_0.json', 'outdoor-coupa-cafe-2019-02-06_0.json', 'forbes-cafe-2019-01-22_0.json', 'nvidia-aud-2019-04-18_0.json', 'meyer-green-2019-03-16_0.json', 'quarry-road-2019-02-28_0.json', 'cubberly-auditorium-2019-04-22_0.json', 'nvidia-aud-2019-04-18_2.json', 'hewlett-class-2019-01-23_0.json', 'jordan-hall-2019-04-22_0.json', 'indoor-coupa-cafe-2019-02-06_0.json', 'clark-center-intersection-2019-02-28_0.json', 'huang-2-2019-01-25_1.json', 'stlc-111-2019-04-19_2.json', 'gates-159-group-meeting-2019-04-03_0.json', 'gates-basement-elevators-2019-01-17_0.json', 'clark-center-2019-02-28_0.json']
-    test_files = ['serra-street-2019-01-30_0.json', 'nvidia-aud-2019-01-25_0.json', 'discovery-walk-2019-02-28_0.json', 'gates-foyer-2019-01-17_0.json', 'tressider-2019-03-16_2.json', 'discovery-walk-2019-02-28_1.json', 'meyer-green-2019-03-16_1.json', 'tressider-2019-04-26_0.json', 'gates-to-clark-2019-02-28_0.json', 'gates-ai-lab-2019-04-17_0.json', 'tressider-2019-04-26_1.json', 'stlc-111-2019-04-19_1.json', 'lomita-serra-intersection-2019-01-30_0.json', 'hewlett-class-2019-01-23_1.json', 'cubberly-auditorium-2019-04-22_1.json', 'tressider-2019-04-26_3.json', 'nvidia-aud-2019-04-18_1.json', 'huang-intersection-2019-01-22_0.json', 'food-trucks-2019-02-12_0.json', 'outdoor-coupa-cafe-2019-02-06_0.json', 'quarry-road-2019-02-28_0.json', 'nvidia-aud-2019-04-18_2.json', 'hewlett-class-2019-01-23_0.json', 'indoor-coupa-cafe-2019-02-06_0.json', 'huang-2-2019-01-25_1.json', 'stlc-111-2019-04-19_2.json', 'gates-basement-elevators-2019-01-17_0.json']
+    train_files = ['packard-poster-session-2019-03-20_1.json', 'bytes-cafe-2019-02-07_0.json', 'memorial-court-2019-03-16_0.json', 'huang-basement-2019-01-25_0.json', 'gates-basement-elevators-2019-01-17_1.json', 'tressider-2019-04-26_2.json', 'svl-meeting-gates-2-2019-04-08_0.json', 'gates-to-clark-2019-02-28_1.json', 'svl-meeting-gates-2-2019-04-08_1.json', 'gates-ai-lab-2019-02-08_0.json', 'tressider-2019-03-16_0.json', 'stlc-111-2019-04-19_0.json', 'huang-2-2019-01-25_0.json', 'hewlett-packard-intersection-2019-01-24_0.json', 'tressider-2019-03-16_1.json', 'clark-center-2019-02-28_1.json', 'huang-lane-2019-02-12_0.json', 'packard-poster-session-2019-03-20_2.json', 'packard-poster-session-2019-03-20_0.json', 'forbes-cafe-2019-01-22_0.json', 'nvidia-aud-2019-04-18_0.json', 'meyer-green-2019-03-16_0.json', 'cubberly-auditorium-2019-04-22_0.json', 'jordan-hall-2019-04-22_0.json', 'clark-center-intersection-2019-02-28_0.json', 'gates-159-group-meeting-2019-04-03_0.json', 'clark-center-2019-02-28_0.json']
+    test_files = ['packard-poster-session-2019-03-20_1.json', 'memorial-court-2019-03-16_0.json', 'bytes-cafe-2019-02-07_0.json']
 
-    input_dim = 3
-    num_layers = 2
+    input_dim = 2
+    num_layers = 3
     seq_length =  35 #35
-    hidden_size = 256
+    hidden_size = 128
     num_epochs = 10
     #scaled = False
 
     model = LSTM_Trainer(input_dim, hidden_size, num_layers, seq_length)
     model = model.to(device)
-    loss_function = nn.L1Loss()
+    loss_function = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(),lr=0.001)
     #scaler = MinMaxScaler(feature_range=(0, 1))
-    scaler = load(open('scaler_full.pkl', 'rb'))
+    scaler = load(open('scaler_2d_final.pkl', 'rb'))
     
     #---------------------------------------------------------------------------------------------------------------------------------
 
@@ -148,7 +158,7 @@ if __name__ == "__main__":
 
             with torch.no_grad():
                 print("Data file: " + file)
-                data, lengths = dataset_parser(file, seq_length, True)
+                data = dataset_parser(file, seq_length, True)
 
                 #packed_sequences = rnn_utils.pack_padded_sequence(data,
                                                     #lengths, batch_first=True, enforce_sorted=False)
@@ -193,11 +203,11 @@ if __name__ == "__main__":
                 #     X_train[:,:,0:3] = torch.tensor(scaler.fit_transform(X_train[:,:,0:3].reshape(-1,1)).reshape(X_train[:,:,0:3].shape), dtype=torch.float32)
                 #    Y_train[:,:,0:3] = torch.tensor(scaler.transform(Y_train[:,:,0:3].reshape(-1,1)).reshape(Y_train[:,:,0:3].shape), dtype=torch.float32)
                 #    scaled = True
-
-                X_train[:,:,0:3] = torch.tensor(scaler.transform(X_train[:,:,0:3].reshape(-1,1)).reshape(X_train[:,:,0:3].shape), dtype=torch.float32)
-                Y_train[:,:,0:3] = torch.tensor(scaler.transform(Y_train[:,:,0:3].reshape(-1,1)).reshape(Y_train[:,:,0:3].shape), dtype=torch.float32)
+                #print(X_train)
+                X_train[:,:,0:2] = torch.tensor(scaler.transform(X_train[:,:,0:2].reshape(-1,2)).reshape(X_train[:,:,0:2].shape), dtype=torch.float32)
+                Y_train[:,:,0:2] = torch.tensor(scaler.transform(Y_train[:,:,0:2].reshape(-1,2)).reshape(Y_train[:,:,0:2].shape), dtype=torch.float32)
+                #print(X_train)
                 
-
                 num_samples, total, input_dim = X_train.size()
                 num_subsequences = total - seq_length + 1
                 for i in range(num_subsequences):
@@ -205,7 +215,7 @@ if __name__ == "__main__":
                         
                     #model.zero_grad()
 
-                    subseq_xyz = X_train[:,i:i+seq_length,0:3].float()
+                    subseq_xyz = X_train[:,i:i+seq_length,0:2].float()
 
                     #subseq_xyz = scaler.fit_transform(subseq_xyz.reshape(-1,1)).reshape(subseq_xyz.shape)      #                      #scaling
                         
@@ -213,7 +223,7 @@ if __name__ == "__main__":
                     subseq_xyz = subseq_xyz.to(device)
                     #targets_xyz = Y_train[:,i:i+seq_length,0:3].float()
 
-                    targets_xyz = Y_train[:,i:i+seq_length,0:3].float()
+                    targets_xyz = Y_train[:,i:i+seq_length,0:2].float()
 
                     #targets_xyz = scaler.fit_transform(targets_xyz.reshape(-1,1)).reshape(targets_xyz.shape) #                     #scaling
                         
@@ -249,7 +259,7 @@ if __name__ == "__main__":
         
         print("Loss: " + str(loss))
         if epoch%5 == 0:
-            torch.save(model.state_dict(), "models/larger_model/256h_L1_10_epochs_" + "checkpoint_" + str(epoch) + ".pt") 
+            torch.save(model.state_dict(), "models/model_traj/3lstm_3h_2d_Leaky_" + "checkpoint_" + str(epoch) + ".pt") 
     #--------------------------------------------------------------------------------------------------------------------------------
 
     # Testing loop
@@ -261,7 +271,7 @@ if __name__ == "__main__":
     for file in test_files:
 
         print("Data file: " + file)
-        data, lengths = dataset_parser(file, seq_length, False)
+        data = dataset_parser(file, seq_length, True)
 
         dataset = CustomDataset(data, seq_length)
 
@@ -279,8 +289,8 @@ if __name__ == "__main__":
         
         for X_test, Y_test in test_dataloader:
 
-            X_test[:,:,0:3] = torch.tensor(scaler.transform(X_test[:,:,0:3].reshape(-1,1)).reshape(X_test[:,:,0:3].shape))
-            Y_test[:,:,0:3] = torch.tensor(scaler.transform(Y_test[:,:,0:3].reshape(-1,1)).reshape(Y_test[:,:,0:3].shape))
+            X_test[:,:,0:2] = torch.tensor(scaler.transform(X_test[:,:,0:2].reshape(-1,2)).reshape(X_test[:,:,0:2].shape))
+            Y_test[:,:,0:2] = torch.tensor(scaler.transform(Y_test[:,:,0:2].reshape(-1,2)).reshape(Y_test[:,:,0:2].shape))
 
             num_samples, total, input_dim = X_test.size()
             num_subsequences = total - seq_length + 1
@@ -289,13 +299,13 @@ if __name__ == "__main__":
 
                 model.eval()
 
-                subseq_xyz = X_test[:,j:j+seq_length,0:3].float()
+                subseq_xyz = X_test[:,j:j+seq_length,0:2].float()
                 #subseq_xyz = scaler.transform(subseq_xyz.reshape(-1,1)).reshape(subseq_xyz.shape)
 
                 #subseq_xyz = torch.tensor(subseq_xyz, dtype=torch.float32)     
                 subseq_xyz = subseq_xyz.to(device)
                 #targets_xyz = Y_test[:,j:j+seq_length,0:3].float()
-                targets_xyz = Y_test[:,j:j+seq_length,0:3].float()
+                targets_xyz = Y_test[:,j:j+seq_length,0:2].float()
 
                 #targets_xyz = scaler.transform(targets_xyz.reshape(-1,1)).reshape(targets_xyz.shape)
                 #targets_xyz = torch.tensor(targets_xyz, dtype=torch.float32) 
@@ -311,6 +321,6 @@ if __name__ == "__main__":
 
     # Save model if needed
 
-    torch.save(model.state_dict(), "models/larger_model/256h_L1_10_epochs.pt") 
+    torch.save(model.state_dict(), "models/model_traj/3lstm_3h_2d_Leaky.pt") 
     #dump(scaler, open('scaler.pkl', 'wb'))
     print("Model and scaler saved")

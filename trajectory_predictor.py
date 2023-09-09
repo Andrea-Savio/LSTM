@@ -47,18 +47,19 @@ class Tracked():
     else:
       return False
 
-  def add_detection(self, x, y, z):
+  def add_detection(self, x, y):#, z):
     if len(self.path) < self.seq:
-      column = [0,0,0]
+      #column = [0,0,0]
+      column = [0,0]
       column[0] = x
       column[1] = y
-      column[2] = z
+      #column[2] = z
       self.path.append(column)
       self.counter = self.counter + 1
     else:
       self.path.pop(0)
       self.counter = self.counter - 1
-      self.add_detection(x, y, z)  
+      self.add_detection(x, y)#, z)  
 
 #------------------------------------------------------------------------------------------------------------------------------------
 
@@ -132,7 +133,7 @@ def tracker_callback(msg, args):
         if detection.track_id == person.id:
           rospy.loginfo("ID matched")
           exists = True
-          person.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.position.z)
+          person.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y)#, detection.pose.pose.position.z)
           #print(detection.path)
           rospy.loginfo("Check")
 
@@ -144,17 +145,17 @@ def tracker_callback(msg, args):
             #person.path.reshape(1, seq_length, 3)
             #rospy.loginfo(person.path)
 
-            coord = scaler.transform(path.reshape(-1,1)).reshape(path.shape)
+            coord = scaler.transform(path.reshape(-1,2)).reshape(path.shape)
             coord = torch.tensor(path, dtype=torch.float32)
             #rospy.loginfo(coord)
-            coord = coord.view(1, seq_length, 3)
+            coord = coord.view(1, seq_length, 2)
             coord = coord.to(device)
             rospy.loginfo(coord)
             rospy.loginfo("Data ready")
             
             output = model(coord)
             output = output.cpu().detach().numpy()
-            output = scaler.inverse_transform(output.reshape(-1,1)).reshape(output.shape)
+            output = scaler.inverse_transform(output.reshape(-1,2)).reshape(output.shape)
             #del(coord)
 
             rospy.loginfo(output)
@@ -166,7 +167,8 @@ def tracker_callback(msg, args):
             for i in range(seq_length):
               prediction.trajectory[i].position.x = output[0,i,0]
               prediction.trajectory[i].position.y = output[0,i,1]
-              prediction.trajectory[i].position.z = output[0,i,2]
+              #prediction.trajectory[i].position.z = output[0,i,2]
+              prediction.trajectory[i].position.z = 0
 
               prediction.trajectory[i].orientation.x = 0
               prediction.trajectory[i].orientation.y = 0
@@ -191,7 +193,7 @@ def tracker_callback(msg, args):
       if not exists:
           rospy.loginfo("New ID")
           temp = Tracked(detection.track_id, seq_length)
-          temp.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.position.z)
+          temp.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y)#, detection.pose.pose.position.z)
           temp.counter = temp.counter + 1
           points.append([temp.path[0][0], temp.path[0][1], temp.id])
           msg_list.append(temp)
@@ -216,11 +218,11 @@ if __name__ == "__main__":
   eps = 0.5
   min_samples = 2
   
-  scaler = load(open('scaler_full.pkl', 'rb'))
+  scaler = load(open('scaler_2d_final.pkl', 'rb'))
   dbscan = DBSCAN(eps=eps, min_samples=min_samples)
 
-  model = LSTM_Trainer(input_dim, hidden_size, num_layers, 35)
-  model.load_state_dict(torch.load("models/model_scaled/model2_L1_20_epochs.pt"))
+  model = LSTM_Trainer(2, 256, 3, 35)
+  model.load_state_dict(torch.load("models/model_traj/3lstm_1h_2d.pt"))
   model.to(device)
 
   model.eval()

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  sensor_msgs
   spencer_tracking_msgs
   rwth_perception_people_msgs
   message_generation
@@ -76,6 +77,7 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   geometry_msgs
+  sensor_msgs
 )
 
 ################################################
@@ -121,7 +123,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -209,3 +211,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(scan_raw_filter src/scan_raw_filter.cpp)
+add_dependencies(scan_raw_filter trajectory_prediction_generate_messages_cpp)
+target_link_libraries(scan_raw_filter ${catkin_LIBRARIES})
