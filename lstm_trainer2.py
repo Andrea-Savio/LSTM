@@ -35,10 +35,11 @@ class LSTM_Trainer(nn.Module):
         #self.linear_context = nn.Linear(256,128)
     
         self.fc1 = nn.Linear(self.hidden_size, 128)
-        self.relu1 = nn.LeakyReLU(0.2)
+        #self.relu1 = nn.LeakyReLU(0.2)
         self.fc2 = nn.Linear(128, 64)
-        self.relu2 = nn.LeakyReLU(0.2)
+        #self.relu2 = nn.LeakyReLU(0.2)
         self.fc3 = nn.Linear(64,2)
+        #self.relu3 = nn.LeakyReLU(0.2)
         #self.dropout = nn.Dropout(p=0.2)
         #self.fc3 = nn.Linear(128,64)
         #self.fc4 = nn.Linear(64,3)
@@ -72,11 +73,24 @@ class LSTM_Trainer(nn.Module):
         #combined = torch.cat((out_xyz, out_context),dim=2)
         #print(combined)
         
-        out_xyz = self.fc1(out_xyz)
-        out = self.relu1(out_xyz)
+        out = self.fc1(out_xyz)
+        #out = self.relu1(out)
         out = self.fc2(out)
-        out = self.relu2(out)
+        #out = self.relu2(out)
         output_xyz = self.fc3(out)
+        """
+        if (xyz[0, self.seq_length - 1, 0] > 0 and output_xyz[0,0,0] < 0):
+            print("in")
+            output_xyz[0,:,0] = -output_xyz[0,:,0]
+        if (xyz[0,self.seq_length - 1,1] > 0 and output_xyz[0,0,1] < 0):
+            output_xyz[0,:,1] = -output_xyz[0,:,1]
+        if (xyz[0, self.seq_length - 1, 0] < 0 and output_xyz[0,0,0] > 0):
+            print("in")
+            output_xyz[0,:,0] = -output_xyz[0,:,0]
+        if (xyz[0,self.seq_length - 1,1] < 0 and output_xyz[0,0,1] > 0):
+            output_xyz[0,:,1] = -output_xyz[0,:,1]
+        """
+        #output_xyz = self.relu3(output_xyz)
         #output_xyz = self.fc4(out)
         #output_xyz = self.linear(out_xyz)
 
@@ -137,10 +151,11 @@ if __name__ == "__main__":
     num_layers = 3
     seq_length =  35 #35
     hidden_size = 128
-    num_epochs = 10
+    num_epochs = 20
     #scaled = False
 
     model = LSTM_Trainer(input_dim, hidden_size, num_layers, seq_length)
+    model.load_state_dict(torch.load("models/to_try/3lstm_3h_2d.pt"))
     model = model.to(device)
     loss_function = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(),lr=0.001)
@@ -251,7 +266,7 @@ if __name__ == "__main__":
                     loss = loss_function(preds_xyz,targets_xyz) #+ loss_function(preds_cont, targets_cont)
                     l2_lambda = 0.001
                     l2_norm = sum(p.abs().sum() for p in model.parameters())
-                    loss = loss #+ l2_lambda * l2_norm
+                    #loss = loss + l2_lambda * l2_norm
                     print("Loss at step " + str(i + 1) + " = " + str(loss))
                     optimizer.zero_grad()
                     loss.backward()
@@ -259,7 +274,7 @@ if __name__ == "__main__":
         
         print("Loss: " + str(loss))
         if epoch%5 == 0:
-            torch.save(model.state_dict(), "models/model_traj/3lstm_3h_2d_Leaky_" + "checkpoint_" + str(epoch) + ".pt") 
+            torch.save(model.state_dict(), "models/model_traj/3lstm_3h128_2d_30epochs_" + "checkpoint_" + str(10 + epoch) + ".pt") 
     #--------------------------------------------------------------------------------------------------------------------------------
 
     # Testing loop
@@ -315,12 +330,12 @@ if __name__ == "__main__":
                     preds_xyz = preds_xyz.to(device)
                     loss = loss_function(preds_xyz,targets_xyz)
 
-                #print(loss)
+                print(loss)
 
     #---------------------------------------------------------------------------------------------------------------------------------
 
     # Save model if needed
 
-    torch.save(model.state_dict(), "models/model_traj/3lstm_3h_2d_Leaky.pt") 
+    torch.save(model.state_dict(), "models/model_traj/3lstm_3h128_2d_30epochs.pt") 
     #dump(scaler, open('scaler.pkl', 'wb'))
     print("Model and scaler saved")

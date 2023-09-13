@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
 <!-- Launch the node for the /scan_raw messages filter to publish filtered scan data to the topic /scan_raw_filtered -->
-    <node pkg="trajectory_prediction" name ="scan_raw_filter" type="scan_raw_filter" output="log"/>
+    <node pkg="trajectory_prediction" name ="scan_raw_filter" type="scan_raw_filter" output="log">
+    <!-- <remap from="scan_raw_filtered" to="base_scan"/> -->
+    </node>
 </launch>

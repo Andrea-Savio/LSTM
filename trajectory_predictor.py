@@ -6,7 +6,7 @@ from lstm_trainer2 import LSTM_Trainer
 import torch
 import torch.nn
 import numpy as np
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, PoseArray
 from spencer_tracking_msgs.msg import TrackedPersons
 from spencer_tracking_msgs.msg import TrackedPerson
 from trajectory_prediction.msg import PredictedTrajectories
@@ -33,6 +33,7 @@ class Tracked():
     self.path = []
     self.context = []
     self.counter = 0
+    self.w = 0
     self.seq = seq
   
   def get_path(self):
@@ -47,7 +48,8 @@ class Tracked():
     else:
       return False
 
-  def add_detection(self, x, y):#, z):
+  def add_detection(self, x, y, rot):#, z):
+    self.w = rot
     if len(self.path) < self.seq:
       #column = [0,0,0]
       column = [0,0]
@@ -133,7 +135,7 @@ def tracker_callback(msg, args):
         if detection.track_id == person.id:
           rospy.loginfo("ID matched")
           exists = True
-          person.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y)#, detection.pose.pose.position.z)
+          person.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.orientation.w)#, detection.pose.pose.position.z)
           #print(detection.path)
           rospy.loginfo("Check")
 
@@ -163,19 +165,25 @@ def tracker_callback(msg, args):
             prediction = PredictedTrajectory()
 
             prediction.track_id = person.id
-            prediction.trajectory = [Pose() for k in range(seq_length)]
+            prediction.trajectory.header.frame_id = 'base_footprint'
+            #prediction.trajectory = [Pose() for k in range(seq_length)]
             for i in range(seq_length):
-              prediction.trajectory[i].position.x = output[0,i,0]
-              prediction.trajectory[i].position.y = output[0,i,1]
+              pose = Pose()
+              pose.position.x = output[0,i,0]
+              pose.position.y = output[0,i,1]
               #prediction.trajectory[i].position.z = output[0,i,2]
-              prediction.trajectory[i].position.z = 0
+              pose.position.z = 0
 
-              prediction.trajectory[i].orientation.x = 0
-              prediction.trajectory[i].orientation.y = 0
-              prediction.trajectory[i].orientation.z = 0
-              prediction.trajectory[i].orientation.w = 0
+              pose.orientation.x = 0
+              pose.orientation.y = 0
+              pose.orientation.z = 0
+              pose.orientation.w = person.w
+
+              prediction.trajectory.poses.append(pose)
+              
             rospy.loginfo("Prediction ready")
             pub.publish(prediction)
+            pub2.publish(prediction.trajectory)
             rospy.loginfo("Prediction published")
             end = time.time()
             print(str(end - start))
@@ -193,7 +201,7 @@ def tracker_callback(msg, args):
       if not exists:
           rospy.loginfo("New ID")
           temp = Tracked(detection.track_id, seq_length)
-          temp.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y)#, detection.pose.pose.position.z)
+          temp.add_detection(detection.pose.pose.position.x, detection.pose.pose.position.y, detection.pose.pose.orientation.w)#, detection.pose.pose.position.z)
           temp.counter = temp.counter + 1
           points.append([temp.path[0][0], temp.path[0][1], temp.id])
           msg_list.append(temp)
@@ -205,6 +213,8 @@ if __name__ == "__main__":
   rospy.init_node("trajectory_publisher")
 
   pub = rospy.Publisher("/predicted_trajectories", PredictedTrajectory, queue_size=1000)
+
+  pub2 = rospy.Publisher("/array_of_poses", PoseArray, queue_size = 1000)
 
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -221,8 +231,8 @@ if __name__ == "__main__":
   scaler = load(open('scaler_2d_final.pkl', 'rb'))
   dbscan = DBSCAN(eps=eps, min_samples=min_samples)
 
-  model = LSTM_Trainer(2, 256, 3, 35)
-  model.load_state_dict(torch.load("models/model_traj/3lstm_1h_2d.pt"))
+  model = LSTM_Trainer(2, 128, 3, 35)
+  model.load_state_dict(torch.load("models/model_traj/3lstm_3h128_2d_30epochs.pt"))
   model.to(device)
 
   model.eval()
