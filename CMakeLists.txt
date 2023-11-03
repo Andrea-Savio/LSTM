@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   spencer_tracking_msgs
   rwth_perception_people_msgs
+  human_msgs
   message_generation
 )
 
@@ -215,3 +216,8 @@ include_directories(
 add_executable(scan_raw_filter src/scan_raw_filter.cpp)
 add_dependencies(scan_raw_filter trajectory_prediction_generate_messages_cpp)
 target_link_libraries(scan_raw_filter ${catkin_LIBRARIES})
+
+install(TARGETS scan_raw_filter
+ RUNTIME DESTINATION
+ ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

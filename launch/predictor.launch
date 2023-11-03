@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!-- Start predictor script -->
+    <node name="trajectory_publisher" pkg="trajectory_prediction" type="trajectory_predictor.py" output="screen">
+        <!-- You can pass any command-line arguments to your script here -->
+        <!-- <param name="param_name" type="string" value="param_value"/> -->
+    </node>
+</launch>
+

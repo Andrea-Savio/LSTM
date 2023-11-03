@@ -42,6 +42,7 @@ void Scan_Raw_Filter<sensor_msgs::LaserScan, sensor_msgs::LaserScan>::subscriber
 	
 	//To publish the filtered message
 	filter_publisher.publish(filtered_scan);//ROS_INFO("end modify message");
+	filter_publisher_base.publish(filtered_scan);
 }
 
 int main(int argc, char **argv) //Main function

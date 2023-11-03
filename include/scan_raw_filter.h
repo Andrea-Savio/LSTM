@@ -21,6 +21,7 @@ public:
 	Scan_Raw_Filter(std::string publishTopicName, std::string subscribeTopicName, int queueSize) 
 	{
 		filter_publisher = n.advertise<PublisherType>(publishTopicName, queueSize);
+		filter_publisher_base = n.advertise<PublisherType>("base_scan", queueSize);
 		filter_subscriber = n.subscribe<SubscriberType>(subscribeTopicName, queueSize, &Scan_Raw_Filter::subscriberCallback,this);
 	}
 	void subscriberCallback(const typename SubscriberType::ConstPtr& receivedMsg);
@@ -28,6 +29,7 @@ public:
 protected:
 	ros::Subscriber filter_subscriber;
 	ros::Publisher filter_publisher;
+	ros::Publisher filter_publisher_base;
 	ros::NodeHandle n;
 };
 
